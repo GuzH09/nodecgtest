@@ -1,0 +1,24 @@
+{
+  "name": "nodecgtest",
+  "version": "1.0.0",
+  "description": "Testing NodeCG graphics framework",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GuzH09/nodecgtest.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/GuzH09/nodecgtest/issues"
+  },
+  "homepage": "https://github.com/GuzH09/nodecgtest#readme",
+  "dependencies": {
+    "nodecg": "^2.6.1"
+  }
+}
