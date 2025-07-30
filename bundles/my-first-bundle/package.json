@@ -18,6 +18,9 @@
     "",
     "nodecg-bundle"
   ],
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  },
   "nodecg": {
     "compatibleRange": "^2.0.0",
     "dashboardPanels": [
