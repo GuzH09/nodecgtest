@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/GuzH09/nodecgtest#readme",
   "dependencies": {
+    "generator-nodecg": "^2.2.1",
     "nodecg": "^2.6.1"
   }
 }

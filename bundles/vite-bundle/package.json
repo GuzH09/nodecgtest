@@ -1,0 +1,73 @@
+{
+  "name": "vite-bundle",
+  "version": "0.0.0",
+  "description": "",
+  "homepage": "",
+  "author": {
+    "name": "GuzH",
+    "email": "guzh09@gmail.com",
+    "url": ""
+  },
+  "files": [
+    "dashboard",
+    "graphics",
+    "extension"
+  ],
+  "keywords": [
+    "nodecg-bundle"
+  ],
+  "nodecg": {
+    "compatibleRange": "^2.0.0",
+    "dashboardPanels": [
+      {
+        "name": "panel",
+        "title": "Panel",
+        "width": 2,
+        "file": "panel.html",
+        "headerColor": "#525F78"
+      }
+    ],
+    "graphics": [
+      {
+        "file": "index.html",
+        "width": 1920,
+        "height": 1080,
+        "singleInstance": false
+      }
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "scripts": {
+    "dev": "vite",
+    "build:graphics": "vite build --config vite.config.graphics.ts",
+    "build:dashboard": "vite build --config vite.config.dashboard.ts",
+    "build:extension": "tsc -p src/extension/tsconfig.json",
+    "build": "npm run build:graphics && npm run build:dashboard && npm run build:extension",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "nodecg": "^2.6.0",
+    "typescript": "^5.3.2",
+    "vite": "^6.3.5"
+  },
+  "repository": "https://github.com/GuzH09/nodecgtest",
+  "license": "MIT"
+}
