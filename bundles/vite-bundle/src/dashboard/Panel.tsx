@@ -1,9 +1,30 @@
 import React, { useState, useEffect } from 'react';
+// Helper hook for NodeCG replicants
+type RedisMessage = { id: string; data: Record<string, string> };
+
+function useReplicant<T>(name: string, defaultValue: T): T {
+	const [val, setVal] = useState<T>(defaultValue);
+	useEffect(() => {
+		const rep = nodecg.Replicant<T>(name);
+		const update = (newVal: T | undefined) => {
+			setVal(newVal ?? defaultValue);
+		};
+		rep.on('change', update);
+		return () => {
+			rep.removeListener('change', update);
+		};
+	}, [name, defaultValue]);
+	return val;
+}
 
 export function Panel() {
 	const [count, setCount] = useState(0);
 	const [isVisible, setIsVisible] = useState(true);
 	const [currentTime, setCurrentTime] = useState(new Date());
+
+	// NodeCG Replicants
+	const streamLen = useReplicant<number>('redisStreamLen', 0);
+	const messages = useReplicant<RedisMessage[]>('redisLatestMessages', []);
 
 	// React-specific useEffect hook to update time every second
 	useEffect(() => {
@@ -69,6 +90,19 @@ export function Panel() {
 				}}>
 					Status: {count === 0 ? 'Ready' : count > 5 ? 'High Count!' : 'Counting...'}
 				</div>
+			</div>
+
+			{/* Redis Stream Info */}
+			<div style={{ marginTop: '20px', padding: '10px', border: '1px solid #ccc' }}>
+				<h3>Redis Stream</h3>
+				<p>Total Messages: {streamLen}</p>
+				<ul style={{ maxHeight: '200px', overflowY: 'auto', listStyle: 'none', paddingLeft: 0 }}>
+					{messages.map((msg) => (
+						<li key={msg.id}>
+							<strong>{msg.id}</strong>: {JSON.stringify(msg.data)}
+						</li>
+					))}
+				</ul>
 			</div>
 
 			<p>

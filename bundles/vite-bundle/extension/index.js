@@ -9,6 +9,11 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 dotenv_1.default.config({ path: path_1.default.resolve(__dirname, "../.env") });
 exports.default = (nodecg) => {
+    // Replicants to share Redis stream data with client-side code
+    const redisStreamLenRep = nodecg.Replicant("redisStreamLen", {
+        defaultValue: 0,
+    });
+    const redisLatestMessagesRep = nodecg.Replicant("redisLatestMessages", { defaultValue: [] });
     nodecg.log.info("NodeCG bundle started");
     async function testRedis() {
         try {
@@ -19,12 +24,30 @@ exports.default = (nodecg) => {
             redis.on("error", (err) => {
                 nodecg.log.error("❌ Redis error:", err);
             });
-            // Try fetching stream length as test
             if (process.env.REDIS_STREAM) {
-                const len = await redis.xlen(process.env.REDIS_STREAM);
-                nodecg.log.info(`ℹ️ Stream "${process.env.REDIS_STREAM}" length: ${len}`);
+                const stream = process.env.REDIS_STREAM;
+                // Get total length
+                const len = await redis.xlen(stream);
+                redisStreamLenRep.value = len;
+                nodecg.log.info(`ℹ️ Stream "${stream}" length: ${len}`);
+                // Fetch messages (limit to latest 10 to avoid spam)
+                const rawMessages = await redis.xrevrange(stream, "+", "-", "COUNT", 10);
+                const parsedMessages = rawMessages.map(([id, fields]) => {
+                    const obj = {};
+                    for (let i = 0; i < fields.length; i += 2) {
+                        obj[fields[i]] = fields[i + 1];
+                    }
+                    return { id, data: obj };
+                });
+                redisLatestMessagesRep.value = parsedMessages;
+                if (parsedMessages.length === 0) {
+                    nodecg.log.info(`⚠️ No messages found in stream "${stream}"`);
+                }
+                else {
+                    nodecg.log.info(`📩 Showing latest ${parsedMessages.length} messages:`);
+                    parsedMessages.forEach((msg) => nodecg.log.info(`📝 ID: ${msg.id}`, msg.data));
+                }
             }
-            // Close after test
             await redis.quit();
         }
         catch (err) {
@@ -47,7 +70,8 @@ exports.default = (nodecg) => {
             nodecg.log.error("Failed to connect to MySQL:", err);
         }
     }
-    // Run both on startup
-    testRedis();
-    testMySQL();
+    // Run on startup
+    setInterval(() => {
+        testRedis();
+    }, 5000);
 };
