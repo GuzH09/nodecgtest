@@ -20,81 +20,45 @@ export default (nodecg: NodeCG.ServerAPI) => {
 
   nodecg.log.info("NodeCG bundle started");
 
-  async function testRedis() {
-    try {
-      const redis = new Redis(process.env.REDIS_URL!);
+  async function listenToStream(redis: Redis, stream: string) {
+    let lastId = "$"; // "$" means only new messages
   
-      redis.on("connect", () => {
-        nodecg.log.info("✅ Connected to Redis successfully");
-      });
-  
-      redis.on("error", (err) => {
-        nodecg.log.error("❌ Redis error:", err);
-      });
-  
-      if (process.env.REDIS_STREAM) {
-        const stream = process.env.REDIS_STREAM;
-  
-        // Get total length
-        const len = await redis.xlen(stream);
-        redisStreamLenRep.value = len;
-        nodecg.log.info(`ℹ️ Stream "${stream}" length: ${len}`);
-  
-        // Fetch messages (limit to latest 10 to avoid spam)
-        const rawMessages = await redis.xrevrange(
+    while (true) {
+      try {
+        const result = await redis.xread(
+          "BLOCK",
+          0, // wait forever for new messages
+          "STREAMS",
           stream,
-          "+",
-          "-",
-          "COUNT",
-          10
+          lastId
         );
-
-        const parsedMessages: RedisMessage[] = rawMessages.map(([id, fields]) => {
-          const obj: Record<string, string> = {};
-          for (let i = 0; i < fields.length; i += 2) {
-            obj[fields[i]] = fields[i + 1];
-          }
-          return { id, data: obj };
-        });
-
-        redisLatestMessagesRep.value = parsedMessages;
-
-        if (parsedMessages.length === 0) {
-          nodecg.log.info(`⚠️ No messages found in stream "${stream}"`);
-        } else {
-          nodecg.log.info(`📩 Showing latest ${parsedMessages.length} messages:`);
-          parsedMessages.forEach((msg) => nodecg.log.info(`📝 ID: ${msg.id}`, msg.data));
-        }
-      }
   
-      await redis.quit();
-    } catch (err) {
-      nodecg.log.error("Failed to connect to Redis:", err);
+        if (result) {
+          const [streamName, messages] = result[0];
+          for (const [id, fields] of messages) {
+            const obj: Record<string, string> = {};
+            for (let i = 0; i < fields.length; i += 2) {
+              obj[fields[i]] = fields[i + 1];
+            }
+  
+            // update replicant
+            redisLatestMessagesRep.value = [
+              { id, data: obj },
+              ...redisLatestMessagesRep.value.slice(0, 9),
+            ];
+  
+            nodecg.log.info(`📩 New message: ${id}`, obj);
+            lastId = id;
+          }
+        }
+      } catch (err) {
+        nodecg.log.error("Stream read error:", err);
+        await new Promise((r) => setTimeout(r, 1000)); // backoff
+      }
     }
   }
 
-  async function testMySQL() {
-    try {
-      const conn = await mysql.createConnection({
-        host: process.env.DB_HOST,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASS,
-        database: process.env.DB_NAME,
-      });
 
-      const [rows] = await conn.query("SELECT NOW() as now");
-      nodecg.log.info(
-        `✅ Connected to MySQL. Server time: ${(rows as any)[0].now}`
-      );
-
-      await conn.end();
-    } catch (err) {
-      nodecg.log.error("Failed to connect to MySQL:", err);
-    }
-  }
-
-  // Run on startup
-  setInterval(() => {
-    testRedis();
-  }, 5000);
+  const redis = new Redis(process.env.REDIS_URL!);
+  listenToStream(redis, process.env.REDIS_STREAM!);
 };
